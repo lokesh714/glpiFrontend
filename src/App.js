@@ -1,11 +1,11 @@
-import './App.css';
-import FetchDataComponent from './DataFetcher';
+import "./App.css";
+import BoardSelection from "./BoardSelection";
 
 function App() {
   return (
     <div className="App">
       <h1>Welcome</h1>
-      <FetchDataComponent></FetchDataComponent>
+      <BoardSelection></BoardSelection>
     </div>
   );
 }

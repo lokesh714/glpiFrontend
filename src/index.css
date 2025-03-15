@@ -11,3 +11,30 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 } */
+
+/* Add this to your global CSS file */
+:root {
+  --marvellBlue: #0074d9; /* Primary Marvell Blue */
+  --marvellBlueDark: #005bb5; /* Darker shade of Marvell Blue */
+  --marvellGray: #f4f4f4; /* Light background gray */
+}
+
+body {
+  font-family: "Arial", sans-serif; /* You can use the official font if available */
+}
+
+.bg-marvellBlue {
+  background-color: var(--marvellBlue);
+}
+
+.bg-marvellBlueDark {
+  background-color: var(--marvellBlueDark);
+}
+
+.text-marvellBlue {
+  color: var(--marvellBlue);
+}
+
+.border-marvellBlue {
+  border-color: var(--marvellBlue);
+}

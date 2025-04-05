@@ -5,10 +5,12 @@ const BoardSelection = () => {
   const [models, setModels] = useState([]); // State to store the list of models
   const [selectedBoardType, setSelectedBoardType] = useState(""); // State to store the selected board type
   const [selectedModel, setSelectedModel] = useState(""); // State to store the selected model
-  const [selectedBoardModelId, setSelectedBoardModelId] = useState(null); // State for board model id
   const [modelData, setModelData] = useState(null); // State for model data response
   const [loading, setLoading] = useState(false); // Loading state to show loading spinner
   const [errorMessage, setErrorMessage] = useState(""); // State for error messages
+  const [currentPage, setCurrentPage] = useState(0); // Track the current page
+  const [totalPages, setTotalPages] = useState(1); // Track the total number of pages
+  const [itemsPerPage, setItemsPerPage] = useState(10); // Records per page (initially 10)
 
   // Board types data (Replace with your actual API response)
   const boardData = [
@@ -61,7 +63,6 @@ const BoardSelection = () => {
     try {
       setLoading(true);
       setErrorMessage(""); // Reset error message
-      // Replace this with your actual API request to fetch models
       const response = await fetch(
         `http://localhost:8080/board?name=${boardTypeName}`
       );
@@ -82,21 +83,21 @@ const BoardSelection = () => {
     }
   };
 
-  // Fetch model data when a model is selected
+  // Fetch model data based on current page and items per page
   const fetchModelData = async (modelId) => {
     try {
       setLoading(true);
       setErrorMessage(""); // Reset error message
-      // Make the API call to get the model data using modelId
       const response = await fetch(
-        `http://localhost:8080/board/model/${modelId}`
+        `http://localhost:8080/board/model/${modelId}?page=${currentPage}&size=${itemsPerPage}`
       );
       const data = await response.json();
 
-      if (data && data.data && data.data.length === 0) {
+      if (data && data.data && data.data.content.length === 0) {
         setErrorMessage("No boards found for this model.");
       } else {
         setModelData(data); // Update state with model data
+        setTotalPages(data.data.totalPages); // Update total pages from API response
       }
 
       setLoading(false);
@@ -113,6 +114,7 @@ const BoardSelection = () => {
     setSelectedModel(""); // Reset model
     setModelData(null); // Reset model data
     setErrorMessage(""); // Reset error message
+    setCurrentPage(0); // Reset to the first page
     fetchModels(boardTypeName); // Fetch models for the selected board type
   };
 
@@ -120,8 +122,43 @@ const BoardSelection = () => {
   const handleModelChange = (e) => {
     const modelId = e.target.value;
     setSelectedModel(modelId);
-    fetchModelData(modelId); // Fetch the model data based on the selected model id
+    setCurrentPage(0); // Reset to the first page
+    fetchModelData(modelId); // Fetch model data when a model is selected
   };
+
+  // Function to handle page change
+  const handlePageChange = (direction) => {
+    setCurrentPage((prevPage) => {
+      const newPage = prevPage + direction;
+      return newPage >= 0 && newPage < totalPages ? newPage : prevPage;
+    });
+  };
+
+  // Function to handle records per page input change
+  const handleRecordsPerPageChange = (e) => {
+    const value = e.target.value;
+    if (/^\d*$/.test(value)) {
+      // Allow only numeric values
+      setItemsPerPage(value === "" ? "" : parseInt(value, 10));
+      setErrorMessage(""); // Clear error message if input is valid
+    } else {
+      setErrorMessage("Please enter a valid number.");
+    }
+  };
+
+  // Function to handle the submit action to fetch data with the new records per page
+  const handleSubmit = () => {
+    if (selectedModel) {
+      setCurrentPage(0); // Reset to the first page
+      fetchModelData(selectedModel); // Fetch data with the updated records per page
+    }
+  };
+
+  useEffect(() => {
+    if (selectedModel) {
+      fetchModelData(selectedModel);
+    }
+  }, [currentPage, selectedModel]); // This ensures data is fetched when page or model changes.
 
   return (
     <div style={styles.container}>
@@ -186,27 +223,70 @@ const BoardSelection = () => {
         </div>
       )}
 
-      {modelData && modelData.data && modelData.data.length > 0 && (
-        <div>
-          <h3 style={styles.subHeader}>Model Data:</h3>
-          <table border="1" style={styles.table}>
-            <thead>
-              <tr>
-                <th>Board Name</th>
-                <th>Board Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {modelData.data.map((item, index) => (
-                <tr key={index}>
-                  <td>{item.boardName}</td>
-                  <td>{item.boardStatus}</td>
+      {modelData &&
+        modelData.data.content &&
+        modelData.data.content.length > 0 && (
+          <div>
+            <h3 style={styles.subHeader}>Model Data:</h3>
+            <table border="1" style={styles.table}>
+              <thead>
+                <tr>
+                  <th>Board Name</th>
+                  <th>Board Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {modelData.data.content.map((item, index) => (
+                  <tr key={index}>
+                    <td>{item.boardName}</td>
+                    <td>{item.boardStatus}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+      <div style={styles.pagination}>
+        <button
+          onClick={() => handlePageChange(-1)} // Go to previous page
+          disabled={currentPage === 0}
+          style={styles.paginationButton}
+        >
+          Previous
+        </button>
+
+        <span>
+          Page {currentPage + 1} of {totalPages}
+        </span>
+
+        <button
+          onClick={() => handlePageChange(1)} // Go to next page
+          disabled={currentPage === totalPages - 1}
+          style={styles.paginationButton}
+        >
+          Next
+        </button>
+      </div>
+
+      {/* Records per page input and Submit button */}
+      <div style={styles.recordsPerPage}>
+        <label htmlFor="records-per-page">Records per page:</label>
+        <input
+          id="records-per-page"
+          type="number"
+          value={itemsPerPage}
+          onChange={handleRecordsPerPageChange}
+          min="1"
+          style={styles.input}
+        />
+
+        {errorMessage && <div style={styles.errorMessage}>{errorMessage}</div>}
+
+        <button onClick={handleSubmit} style={styles.paginationButton}>
+          Submit
+        </button>
+      </div>
     </div>
   );
 };
@@ -218,7 +298,8 @@ const styles = {
     backgroundColor: "#f4f7fc",
     padding: "20px",
     borderRadius: "8px",
-    maxWidth: "600px",
+    width: "90vw",
+    height: "100vh",
     margin: "auto",
     boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
   },
@@ -237,6 +318,13 @@ const styles = {
     width: "100%",
     padding: "12px 20px",
     marginBottom: "20px",
+    borderRadius: "5px",
+    border: "1px solid #ccc",
+    fontSize: "16px",
+  },
+  input: {
+    width: "100%",
+    padding: "12px 20px",
     borderRadius: "5px",
     border: "1px solid #ccc",
     fontSize: "16px",
@@ -260,6 +348,24 @@ const styles = {
     textAlign: "center",
     marginTop: "20px",
     fontSize: "16px",
+  },
+  pagination: {
+    textAlign: "center",
+    marginTop: "20px",
+  },
+  paginationButton: {
+    padding: "16px 16px",
+    margin: "0 10px",
+    backgroundColor: "#007bff",
+    color: "#fff",
+    border: "10px",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  recordsPerPage: {
+    textAlign: "center",
+    marginTop: "20px",
+    width: "200px",
   },
 };
 

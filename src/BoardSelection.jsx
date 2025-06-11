@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from "react";
-
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 const BoardSelection = () => {
-  const [boardTypes, setBoardTypes] = useState([]); // State to store the list of board types
-  const [models, setModels] = useState([]); // State to store the list of models
-  const [selectedBoardType, setSelectedBoardType] = useState(""); // State to store the selected board type
-  const [selectedModel, setSelectedModel] = useState(""); // State to store the selected model
-  const [modelData, setModelData] = useState(null); // State for model data response
-  const [loading, setLoading] = useState(false); // Loading state to show loading spinner
-  const [errorMessage, setErrorMessage] = useState(""); // State for error messages
-  const [currentPage, setCurrentPage] = useState(0); // Track the current page
-  const [totalPages, setTotalPages] = useState(1); // Track the total number of pages
-  const [itemsPerPage, setItemsPerPage] = useState(10); // Records per page (initially 10)
-
-  // Board types data (Replace with your actual API response)
+  const [boardTypes, setBoardTypes] = useState([]);
+  const [models, setModels] = useState([]);
+  const [selectedBoardType, setSelectedBoardType] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+  const [modelData, setModelData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const boardData = [
     { id: 1, name: "EBB" },
     { id: 2, name: "FIO" },
@@ -52,120 +59,136 @@ const BoardSelection = () => {
     { id: 36, name: "EVB-Board" },
     { id: 37, name: "EV-COMX" },
   ];
-
-  // Set board types data in state when the component mounts
   useEffect(() => {
     setBoardTypes(boardData);
   }, []);
-
-  // Fetch models when a board type is selected
   const fetchModels = async (boardTypeName) => {
     try {
       setLoading(true);
-      setErrorMessage(""); // Reset error message
+      setErrorMessage("");
       const response = await fetch(
         `http://localhost:8080/board?name=${boardTypeName}`
       );
       const data = await response.json();
-
       if (data && data.data) {
         if (data.data.length === 0) {
           setErrorMessage("No board models found under this type.");
         } else {
-          setModels(data.data); // Update models state with the API response
+          setModels(data.data);
         }
       }
-
       setLoading(false);
     } catch (error) {
       console.error("Error fetching models:", error);
       setLoading(false);
     }
   };
-
-  // Fetch model data based on current page and items per page
   const fetchModelData = async (modelId) => {
+    if (!modelId || modelId === "all") return;
     try {
       setLoading(true);
-      setErrorMessage(""); // Reset error message
+      setErrorMessage("");
       const response = await fetch(
         `http://localhost:8080/board/model/${modelId}?page=${currentPage}&size=${itemsPerPage}`
       );
       const data = await response.json();
-
       if (data && data.data && data.data.content.length === 0) {
         setErrorMessage("No boards found for this model.");
       } else {
-        setModelData(data); // Update state with model data
-        setTotalPages(data.data.totalPages); // Update total pages from API response
+        setModelData(data);
+        setTotalPages(data.data.totalPages);
       }
-
       setLoading(false);
     } catch (error) {
       console.error("Error fetching model data:", error);
       setLoading(false);
     }
   };
+  const fetchAllModelData = async () => {
+    try {
+      setLoading(true);
+      setErrorMessage(""); // Reset error message
+      const response = await fetch(
+        `http://localhost:8080/board/model?page=${currentPage}&size=${itemsPerPage}`
+      );
+      const data = await response.json();
 
-  // Handle board type selection change
+      if (data && data.data && data.data.content.length === 0) {
+        setErrorMessage("No boards found.");
+      } else {
+        setModelData(data);
+        setTotalPages(data.data.totalPages);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching all board data:", error);
+      setLoading(false);
+    }
+  };
   const handleBoardTypeChange = (e) => {
     const boardTypeName = e.target.value;
     setSelectedBoardType(boardTypeName);
-    setSelectedModel(""); // Reset model
-    setModelData(null); // Reset model data
-    setErrorMessage(""); // Reset error message
-    setCurrentPage(0); // Reset to the first page
-    fetchModels(boardTypeName); // Fetch models for the selected board type
+    setSelectedModel("");
+    setModelData(null);
+    setErrorMessage("");
+    setCurrentPage(0);
+    fetchModels(boardTypeName);
   };
-
-  // Handle model selection change
   const handleModelChange = (e) => {
     const modelId = e.target.value;
     setSelectedModel(modelId);
-    setCurrentPage(0); // Reset to the first page
-    fetchModelData(modelId); // Fetch model data when a model is selected
+    setCurrentPage(0);
+    if (modelId === "all") {
+      fetchAllModelData();
+    } else {
+      fetchModelData(modelId);
+    }
   };
-
-  // Function to handle page change
   const handlePageChange = (direction) => {
     setCurrentPage((prevPage) => {
       const newPage = prevPage + direction;
       return newPage >= 0 && newPage < totalPages ? newPage : prevPage;
     });
   };
-
-  // Function to handle records per page input change
   const handleRecordsPerPageChange = (e) => {
     const value = e.target.value;
     if (/^\d*$/.test(value)) {
-      // Allow only numeric values
       setItemsPerPage(value === "" ? "" : parseInt(value, 10));
-      setErrorMessage(""); // Clear error message if input is valid
+      setErrorMessage("");
     } else {
       setErrorMessage("Please enter a valid number.");
     }
   };
-
-  // Function to handle the submit action to fetch data with the new records per page
   const handleSubmit = () => {
-    if (selectedModel) {
-      setCurrentPage(0); // Reset to the first page
-      fetchModelData(selectedModel); // Fetch data with the updated records per page
-    }
-  };
-
-  useEffect(() => {
-    if (selectedModel) {
+    setCurrentPage(0);
+    if (selectedModel === "all") {
+      fetchAllModelData();
+    } else if (selectedModel) {
       fetchModelData(selectedModel);
     }
-  }, [currentPage, selectedModel]); // This ensures data is fetched when page or model changes.
-
+  };
+  useEffect(() => {
+    if (selectedModel === "all") {
+      fetchAllModelData();
+    } else if (selectedModel) {
+      fetchModelData(selectedModel);
+    }
+  }, [currentPage, selectedModel]);
+  const getChartData = () => {
+    if (!modelData || !modelData.data || !modelData.data.content) return [];
+    const statusCounts = modelData.data.content.reduce((acc, item) => {
+      acc[item.boardStatus] = (acc[item.boardStatus] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(statusCounts).map(([status, count]) => ({
+      status,
+      count,
+    }));
+  };
   return (
     <div style={styles.container}>
       <h2 style={styles.header}>CCS LABS GLPI Boards Data</h2>
-
       {loading && <p>Loading...</p>}
-
       <div>
         <label htmlFor="board-type" style={styles.label}>
           Select Board Type:
@@ -185,15 +208,12 @@ const BoardSelection = () => {
           ))}
         </select>
       </div>
-
-      {/* Display No Models Found Message */}
       {selectedBoardType && models.length === 0 && !loading && (
         <div style={styles.errorMessage}>
           No board models found under this type. Please choose another board
           type.
         </div>
       )}
-
       {selectedBoardType && models.length > 0 && (
         <div>
           <label htmlFor="model" style={styles.label}>
@@ -207,6 +227,7 @@ const BoardSelection = () => {
             style={styles.select}
           >
             <option value="">Select a model</option>
+            <option value="all">All Models</option>
             {models.map((model) => (
               <option key={model.id} value={model.id}>
                 {model.name}
@@ -215,18 +236,15 @@ const BoardSelection = () => {
           </select>
         </div>
       )}
-
-      {/* Display No Boards Found Message */}
       {selectedModel && !modelData && !loading && (
         <div style={styles.errorMessage}>
           No boards found for this model. Please choose another model.
         </div>
       )}
-
       {modelData &&
         modelData.data.content &&
         modelData.data.content.length > 0 && (
-          <div>
+          <>
             <h3 style={styles.subHeader}>Model Data:</h3>
             <table border="1" style={styles.table}>
               <thead>
@@ -244,32 +262,40 @@ const BoardSelection = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+            {/* Bar Chart */}
+            <div style={{ width: "100%", height: 300, marginTop: 30 }}>
+              <ResponsiveContainer>
+                <BarChart data={getChartData()}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="status" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="count" fill="#8884D8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </>
         )}
-
       <div style={styles.pagination}>
         <button
-          onClick={() => handlePageChange(-1)} // Go to previous page
+          onClick={() => handlePageChange(-1)}
           disabled={currentPage === 0}
           style={styles.paginationButton}
         >
           Previous
         </button>
-
         <span>
           Page {currentPage + 1} of {totalPages}
         </span>
-
         <button
-          onClick={() => handlePageChange(1)} // Go to next page
+          onClick={() => handlePageChange(1)}
           disabled={currentPage === totalPages - 1}
           style={styles.paginationButton}
         >
           Next
         </button>
       </div>
-
-      {/* Records per page input and Submit button */}
       <div style={styles.recordsPerPage}>
         <label htmlFor="records-per-page">Records per page:</label>
         <input
@@ -280,9 +306,7 @@ const BoardSelection = () => {
           min="1"
           style={styles.input}
         />
-
         {errorMessage && <div style={styles.errorMessage}>{errorMessage}</div>}
-
         <button onClick={handleSubmit} style={styles.paginationButton}>
           Submit
         </button>
@@ -290,12 +314,10 @@ const BoardSelection = () => {
     </div>
   );
 };
-
-// Styling Object
 const styles = {
   container: {
     fontFamily: "Arial, sans-serif",
-    backgroundColor: "#f4f7fc",
+    backgroundColor: "#F4F7FC",
     padding: "20px",
     borderRadius: "8px",
     width: "90vw",
@@ -344,7 +366,7 @@ const styles = {
     border: "1px solid #ddd",
   },
   errorMessage: {
-    color: "#d9534f",
+    color: "#D9534F",
     textAlign: "center",
     marginTop: "20px",
     fontSize: "16px",
@@ -356,7 +378,7 @@ const styles = {
   paginationButton: {
     padding: "16px 16px",
     margin: "0 10px",
-    backgroundColor: "#007bff",
+    backgroundColor: "#007BFF",
     color: "#fff",
     border: "10px",
     borderRadius: "5px",
@@ -368,5 +390,4 @@ const styles = {
     width: "200px",
   },
 };
-
 export default BoardSelection;
